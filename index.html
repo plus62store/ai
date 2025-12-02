@@ -89,6 +89,34 @@
       position: relative;
     }
 
+.message strong {
+  font-weight: 600;
+  color: inherit;
+}
+
+.message em {
+  font-style: italic;
+  color: #666;
+}
+
+.message code {
+  background: rgba(56, 128, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.ai-message {
+  line-height: 1.5;
+}
+
+.ai-message br {
+  margin-bottom: 8px;
+  display: block;
+  content: "";
+}
+
     .chat-messages {
       flex: 1;
       overflow-y: auto;
