@@ -234,7 +234,7 @@
       { view: "decrement", label: false },
       { attr: "quantity", label: 'Qty', view: "qty" },
       { view: "increment", label: false },
-      { view: "remove", text: "Hapus", label: false }
+      { view: "remove", text: "✕ Hapus", label: false }
     ],
     currency: "IDR",
   });
@@ -244,14 +244,12 @@
   let chatHistory = [];
   const AI_API_URL = 'https://ai-plus62store.sendaljepit.workers.dev/api/chat';
 
-  // Helper: Parse harga "20.000" ke 20000
+  // Format harga
   function parsePrice(priceStr) {
-    if (typeof priceStr === 'number') return priceStr;
     if (!priceStr) return 0;
     return parseInt(priceStr.toString().replace(/\./g, '')) || 0;
   }
 
-  // Helper: Format harga untuk display
   function formatPrice(price) {
     if (typeof price === 'string') return price;
     return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -271,37 +269,55 @@
         card.className = 'product-card';
         
         const stockColor = item.stok === 'Stok Habis' ? '#e74c3c' : '#27ae60';
-        const stockText = item.stok === 'Stok Habis' ? 'Stok Habis' : 'Tersedia';
+        const stockText = item.stok === 'Stok Habis' ? '😔 Stok Habis' : '✅ Tersedia';
+        const discount = parsePrice(item.discount);
+        const original = parsePrice(item.price);
+        const save = original - discount;
 
         card.innerHTML = `
-          <img class="product-image" src="${item.image}" alt="${item.title}" loading="lazy" />
+          <img class="product-image" src="${item.image}" alt="${item.title}" loading="lazy" 
+               onerror="this.src='https://via.placeholder.com/300x200?text=🛒+Masker+Online'" />
           <div class="product-title">${item.title}</div>
           <div class="product-price">
-            ${item.price ? `<span style="text-decoration: line-through; color: #999; margin-right: 8px;">
-              Rp ${formatPrice(item.price)}
-            </span>` : ''}
-            <span style="font-weight: bold; color: #e74c3c;">
+            <span style="color: #e74c3c; font-weight: bold;">
               Rp ${formatPrice(item.discount)}
             </span>
+            ${save > 0 ? `<div style="font-size: 11px; color: #2ecc71;">Hemat Rp ${formatPrice(save)}!</div>` : ''}
           </div>
           <div class="product-stock" style="color: ${stockColor}">
             ${stockText}
           </div>
+          <div style="padding: 0 12px 8px; font-size: 11px; color: #666;">
+            💬 Chat Maya untuk tanya/beli
+          </div>
         `;
 
-        card.addEventListener('click', () => openProductChat(item));
+        card.addEventListener('click', () => {
+          console.log('Opening chat for:', item.title);
+          openProductChat(item);
+        });
+        
         container.appendChild(card);
       });
 
       updateCartCount();
+      
     } catch (err) {
       console.error('Gagal memuat produk:', err);
       const container = document.getElementById('productGrid');
-      container.innerHTML = '<p style="text-align:center;color:red;">Gagal memuat data produk.</p>';
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
+          <div style="font-size: 48px;">😕</div>
+          <p style="color: #666; margin-top: 16px;">Gagal memuat produk</p>
+          <button onclick="loadProducts()" style="margin-top: 16px; padding: 10px 20px; background: #3880ff; color: white; border: none; border-radius: 8px;">
+            🔄 Coba Lagi
+          </button>
+        </div>
+      `;
     }
   }
 
-  // Open chat for specific product
+  // Open chat - SUPER FRIENDLY VERSION
   function openProductChat(product) {
     currentProduct = product;
     chatHistory = [];
@@ -310,70 +326,95 @@
     const title = document.getElementById('chat-title');
     const messages = document.getElementById('chat-messages');
     
-    title.textContent = `🤖 AI Assistant - ${product.title}`;
+    title.innerHTML = `💬 Maya - ${product.title}`;
     messages.innerHTML = '';
     
-    // Initial AI message - beri konteks produk
-    const colors = product.styles?.map(s => s.name).join(', ') || 'berbagai pilihan';
-    const price = formatPrice(product.discount);
+    // Welcome message yang sangat friendly
+    const colors = product.styles?.map(s => s.name).join(', ') || 'beragam warna cakep';
+    const discountPrice = formatPrice(product.discount);
+    const originalPrice = formatPrice(product.price);
+    const saveAmount = parsePrice(product.price) - parsePrice(product.discount);
     
-    addMessage('ai', `👋 **Halo! Saya AI Assistant GPT khusus untuk ${product.title}.** 
-    
-**📊 Detail Produk:**
-• 💰 **Harga:** Rp ${price}
-• 📦 **Stok:** ${product.stok}
-• 🎨 **Warna tersedia:** ${colors}
-• 🎀 **Model tali:** Regular, Panjang, Pendek
+    const welcomeMessage = `Hai kak! 👋 Aku Maya, asisten belanja kamu di Plus62 Store! 😊
 
-**💡 Cara berinteraksi dengan saya:**
-1. Tanya detail produk: "Berapa harganya?", "Apa warnanya?"
-2. Cek ketersediaan: "Stok masih ada?", "Warna merah ada?"
-3. Mulai belanja: "Saya mau beli warna hitam 2 pcs"
-4. Tanya apapun tentang produk ini!
+Aku liat kamu lagi liat **${product.title}** nih. Good choice! 👌
 
-**Contoh pesan:**
-• "Berapa harga diskonnya?"
-• "Saya mau warna navy 3 buah"
-• "Model tali panjang ada?"
-• "Tambah ke keranjang 1 pcs warna merah"
+**Quick info buat kamu:**
+💰 **Harga:** Rp ${discountPrice} *(dulu Rp ${originalPrice}, hemat Rp ${formatPrice(saveAmount)} lho!)*
+🎨 **Warna:** ${colors}
+📦 **Stok:** ${product.stok === 'Stok Habis' ? '😭 Lagi kosong nih, cek produk lain ya!' : '✅ Masih ada, yuk langsung!'}
+📏 **Tali:** Bisa pilih regular / panjang / pendek
 
-_Saya siap membantu Anda! Apa yang ingin Anda tanyakan atau pesan?_ 🛍️`);
+Gimana kak? Mau tanya apa aja soal produk ini? Atau langsung mau pesan? Aku siap bantu! 💁‍♀️
+
+*Contoh chat sama aku:*
+• "Warnanya ada yg item gak?"
+• "Aku mau yg warna navy 3 biji dong"
+• "Model tali panjangnya gimana sih?"
+• "Ceritain dong kelebihan masker ini"
+• "Langsung masukin ke keranjang aja yg warna krem 2 pcs"`;
+
+    addMessage('ai', welcomeMessage);
     
     modal.present();
+    
+    // Auto focus ke input
+    setTimeout(() => {
+      const input = document.getElementById('chat-input');
+      if (input) input.focus();
+    }, 300);
   }
 
-  // Add message to chat
+  // Add message dengan styling lebih baik
   function addMessage(sender, text) {
     const messages = document.getElementById('chat-messages');
+    if (!messages) return;
+    
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}-message`;
-    messageDiv.innerHTML = text.replace(/\n/g, '<br>');
+    
+    // Format text: line breaks, bold with **, emoji support
+    let formattedText = text
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Add sender label
+    const senderLabel = sender === 'ai' 
+      ? '<div style="font-size: 11px; color: #666; margin-bottom: 4px;">🤖 Maya</div>' 
+      : '<div style="font-size: 11px; color: #666; margin-bottom: 4px;">👤 Kamu</div>';
+    
+    messageDiv.innerHTML = senderLabel + formattedText;
     messages.appendChild(messageDiv);
     messages.scrollTop = messages.scrollHeight;
   }
 
-  // Show typing indicator
+  // Typing indicator yang lebih cute
   function showTyping() {
     const messages = document.getElementById('chat-messages');
+    if (!messages) return;
+    
     const typingDiv = document.createElement('div');
-    typingDiv.className = 'typing-indicator';
+    typingDiv.className = 'message ai-message';
     typingDiv.id = 'typing-indicator';
     typingDiv.innerHTML = `
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
+      <div style="font-size: 11px; color: #666; margin-bottom: 4px;">🤖 Maya sedang mengetik...</div>
+      <div style="display: flex; align-items: center;">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
     `;
     messages.appendChild(typingDiv);
     messages.scrollTop = messages.scrollHeight;
   }
 
-  // Hide typing indicator
   function hideTyping() {
     const typing = document.getElementById('typing-indicator');
     if (typing) typing.remove();
   }
 
-  // Send message to GPT AI
+  // Send message - MAIN CHAT FUNCTION
   async function sendMessage() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
@@ -388,32 +429,34 @@ _Saya siap membantu Anda! Apa yang ingin Anda tanyakan atau pesan?_ 🛍️`);
     showTyping();
     
     try {
-      // Prepare cart data
-      const cartData = getCartData();
+      // Prepare context
+      const cartData = simpleCart.items().map(item => ({
+        name: item.get('name'),
+        price: item.get('price'),
+        quantity: item.get('quantity'),
+        warna: item.get('warna'),
+        ukuran: item.get('ukuran')
+      }));
       
-      // Call GPT AI
+      console.log('Sending to AI:', { message, product: currentProduct?.title });
+      
+      // Call AI
       const response = await fetch(AI_API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: message,
           productId: currentProduct?.id,
-          context: {
-            cart: cartData,
-            currentProduct: currentProduct,
-            userPreferences: {}
-          }
+          context: { cart: cartData }
         })
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       const aiResponse = await response.json();
       hideTyping();
+      
+      console.log('AI Response:', aiResponse);
       
       // Add AI response
       if (aiResponse.response) {
@@ -421,128 +464,70 @@ _Saya siap membantu Anda! Apa yang ingin Anda tanyakan atau pesan?_ 🛍️`);
       }
       
       // Handle actions
-      if (aiResponse.action === 'addToCart' && aiResponse.data) {
-        handleAddToCart(aiResponse.data);
-      } else if (aiResponse.action === 'ask') {
-        // GPT minta informasi tambahan
-        addMessage('ai', `${aiResponse.response}\n\nSilakan jawab di chat ya!`);
+      if (aiResponse.action?.type === 'addToCart' && aiResponse.action.data) {
+        handleAddToCart(aiResponse.action.data);
       }
       
       // Save to history
-      chatHistory.push({
-        role: 'user',
-        content: message
-      }, {
-        role: 'assistant',
-        content: aiResponse.response
-      });
+      chatHistory.push({ user: message, ai: aiResponse.response });
       
     } catch (error) {
       hideTyping();
-      console.error('GPT AI Error:', error);
+      console.error('Chat error:', error);
       
-      // Fallback to local AI
-      handleLocalAIResponse(message);
+      // Fallback: Maya still responds even when API is down
+      const fallbackResponses = [
+        `Wah sorry kak, koneksi aku lagi agak lemot nih 😅 Tapi tetep semangat bantu kamu! Coba tanya yang lain atau langsung aja bilang mau beli warna apa berapa pcs! 💪`,
+        `Oops, jaringan lagi ngambek nih kayanya 😬 Tapi gak papa, Maya tetap di sini! Mau tanya apa lagi soal ${currentProduct?.title}? Atau langsung pesan aja? 😊`,
+        `Hmm kayanya server lagi istirahat dikit nih 😴 Tapi aku Maya masih siap kok! Coba chat lagi atau langsung aja kasih tau mau pesan yang mana 😄`
+      ];
+      
+      const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      addMessage('ai', randomResponse);
     }
   }
 
-  // Handle add to cart from GPT
+  // Handle add to cart dengan feedback yang fun
   function handleAddToCart(itemData) {
     try {
-      // Parse price if it's string
       const price = parsePrice(itemData.price);
+      const quantity = itemData.quantity || 1;
+      const warna = itemData.warna || 'pilihan kamu';
+      const ukuran = itemData.ukuran || 'regular';
+      const productName = itemData.name || currentProduct?.title;
       
+      // Add to cart
       simpleCart.add({
-        name: itemData.name || currentProduct.title,
+        name: productName,
         price: price,
-        quantity: itemData.quantity || 1,
-        warna: itemData.warna || 'Belum dipilih',
-        ukuran: itemData.ukuran || 'regular',
-        link: itemData.link || currentProduct.url || '#',
-        berat: itemData.berat || 100
+        quantity: quantity,
+        warna: warna,
+        ukuran: ukuran,
+        link: currentProduct?.url || '#',
+        berat: 100
       });
       
       updateCartCount();
       
-      // Show success in chat
-      addMessage('ai', `✅ **Berhasil ditambahkan ke keranjang!** 
+      // Calculate totals
+      const subtotal = price * quantity;
+      const cartTotal = simpleCart.quantity();
+      const cartValue = simpleCart.total();
       
-📦 **Produk:** ${itemData.name || currentProduct.title}
-🎨 **Warna:** ${itemData.warna || 'Belum dipilih'}
-📏 **Model:** ${itemData.ukuran || 'regular'}
-🔢 **Jumlah:** ${itemData.quantity || 1} pcs
-💰 **Subtotal:** Rp ${formatPrice(price * (itemData.quantity || 1))}
-
-🛒 **Keranjang Anda sekarang:** ${simpleCart.quantity()} item
-💳 **Total sementara:** Rp ${formatPrice(simpleCart.total())}
-
-Ingin tambah produk lain atau lanjut ke checkout?`);
+      // Fun success messages
+      const successMessages = [
+        `🎉 **Yes! Berhasil masuk keranjang!** ${quantity}x ${productName} (${warna}) udah aku tambahin nih!`,
+        `✅ **Done!** ${productName} warna ${warna} udah di keranjang! Mau tambah lagi atau checkout?`,
+        `🛒 **Keranjang updated!** ${productName} masuk! Sekarang ada ${cartTotal} item di keranjang kamu 😊`,
+        `✨ **Nice choice!** ${productName} (${warna}) added! Subtotal: Rp ${formatPrice(subtotal)}`
+      ];
+      
+      const randomMsg = successMessages[Math.floor(Math.random() * successMessages.length)];
+      addMessage('ai', `${randomMsg}<br><br>💰 **Total keranjang:** Rp ${formatPrice(cartValue)}<br>📦 **Item total:** ${cartTotal} produk`);
       
     } catch (error) {
-      console.error('Error adding to cart:', error);
-      addMessage('ai', '❌ **Gagal menambahkan ke keranjang.** Silakan coba lagi atau hubungi admin.');
-    }
-  }
-
-  // Local AI fallback (if GPT fails)
-  function handleLocalAIResponse(message) {
-    const lowerMsg = message.toLowerCase();
-    
-    if (lowerMsg.includes('harga') || lowerMsg.includes('berapa')) {
-      addMessage('ai', `💰 **Harga ${currentProduct.title}:**
-• Harga asli: Rp ${formatPrice(currentProduct.price)}
-• **Harga diskon:** Rp ${formatPrice(currentProduct.discount)}
-• Anda hemat: Rp ${formatPrice(parsePrice(currentProduct.price) - parsePrice(currentProduct.discount))}!`);
-    }
-    else if (lowerMsg.includes('warna') || lowerMsg.includes('color')) {
-      const colors = currentProduct.styles?.map(s => `• ${s.name}`).join('<br>') || 'Tidak ada info warna';
-      addMessage('ai', `🎨 **Warna yang tersedia untuk ${currentProduct.title}:**
-<br>${colors}
-<br><br>Pilih warna favorit Anda!`);
-    }
-    else if (lowerMsg.includes('stok') || lowerMsg.includes('ada') || lowerMsg.includes('tersedia')) {
-      addMessage('ai', `📦 **Status stok ${currentProduct.title}:**
-<br>• **${currentProduct.stok}**
-<br>${currentProduct.stok === 'Stok Habis' ? '😔 Maaf, stok sedang habis. Cek produk lain ya!' : '✅ Siap dikirim! Pesan sekarang!'}`);
-    }
-    else if (lowerMsg.includes('beli') || lowerMsg.includes('pesan') || lowerMsg.includes('tambah') || lowerMsg.includes('cart')) {
-      addMessage('ai', `🛒 **Mau beli ${currentProduct.title}?**
-<br><br>**Langkah pemesanan:**
-<br>1. **Pilih warna** (contoh: "hitam", "navy", "merah")
-<br>2. **Tentukan jumlah** (contoh: "2 pcs", "3 buah")
-<br>3. **Pilih model tali** (regular/panjang/pendek)
-<br><br>**Contoh pesan lengkap:**
-<br>"Saya mau warna hitam 2 pcs model regular"
-<br>"Pesan warna merah 1 buah tali panjang"
-<br>"Beli navy 3 pcs"
-<br><br>Silakan tulis pesan Anda!`);
-    }
-    else {
-      addMessage('ai', `🤖 **AI Assistant untuk ${currentProduct.title}**
-<br><br>Saya bisa bantu Anda dengan:
-<br>• **💰 Harga** - Tanya harga dan diskon
-<br>• **🎨 Warna** - Lihat pilihan warna
-<br>• **📦 Stok** - Cek ketersediaan
-<br>• **🛒 Pemesanan** - Bantu beli produk
-<br>• **❓ Lainnya** - Pertanyaan apapun!
-<br><br>Coba tanya: "Berapa harganya?" atau "Saya mau beli..."`);
-    }
-  }
-
-  // Get cart data for AI context
-  function getCartData() {
-    try {
-      const items = simpleCart.items();
-      return items.map(item => ({
-        name: item.get('name'),
-        price: item.get('price'),
-        quantity: item.get('quantity'),
-        warna: item.get('warna'),
-        ukuran: item.get('ukuran'),
-        total: item.get('price') * item.get('quantity')
-      }));
-    } catch (error) {
-      return [];
+      console.error('Add to cart error:', error);
+      addMessage('ai', `😅 Ups, ada error nih waktu mau masukin ke keranjang. Coba lagi ya kak!`);
     }
   }
 
@@ -553,91 +538,119 @@ Ingin tambah produk lain atau lanjut ke checkout?`);
       const cartCount = document.getElementById('cart-count');
       if (cartCount) {
         cartCount.textContent = count;
+        // Add animation
+        cartCount.style.transform = 'scale(1.2)';
+        setTimeout(() => cartCount.style.transform = 'scale(1)', 300);
       }
     } catch (error) {
       // Silent error
     }
   }
 
-  // Checkout function
-  function checkout() {
-    const cartModal = document.getElementById('cart-modal');
-    cartModal.dismiss();
-    
-    if (simpleCart.quantity() === 0) {
-      alert('Keranjang belanja kosong!');
-      return;
-    }
-    
-    // Use existing WhatsApp order from formOrder.js
-    if (typeof WhatsApp === 'function') {
-      WhatsApp();
-    } else {
-      // Fallback WhatsApp
-      const total = simpleCart.total();
-      const items = simpleCart.items().map(item => 
-        `${item.get('name')} - ${item.get('quantity')} pcs (${item.get('warna')})`
-      ).join('\n');
-      
-      const message = `Halo, saya mau order:\n\n${items}\n\nTotal: Rp ${formatPrice(total)}`;
-      const phone = '6281234567890'; // Ganti dengan nomor admin
-      const encoded = encodeURIComponent(message);
-      window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
-    }
-  }
-
-  // Close chat
-  function closeChat() {
-    const modal = document.getElementById('chat-modal');
-    if (modal) modal.dismiss();
-    currentProduct = null;
-    chatHistory = [];
-  }
-
-  // Close cart
-  function closeCart() {
-    const modal = document.getElementById('cart-modal');
-    if (modal) modal.dismiss();
-  }
-
-  // Enter key support
+  // Enter key support dengan sound effect (optional)
   document.addEventListener('DOMContentLoaded', function() {
     const chatInput = document.getElementById('chat-input');
     if (chatInput) {
       chatInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
           sendMessage();
         }
       });
+      
+      // Auto-expand textarea
+      chatInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+      });
     }
     
-    // Initialize
-    loadProducts();
+    // Send button click
+    const sendBtn = document.getElementById('send-button');
+    if (sendBtn) {
+      sendBtn.addEventListener('click', sendMessage);
+    }
+  });
+
+  // Initialize dengan animasi
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🛍️ Plus62 Store loading...');
     
-    // Update cart on changes
+    // Load products after a slight delay
+    setTimeout(() => {
+      loadProducts();
+    }, 500);
+    
+    // Cart updates
     if (typeof simpleCart !== 'undefined') {
       simpleCart.bind('update', updateCartCount);
     }
     
-    // Initial greeting
-    setTimeout(() => {
-      const messages = document.getElementById('chat-messages');
-      if (messages && messages.children.length === 0) {
-        addMessage('ai', `🤖 **Selamat datang di AI Shopping Assistant!**
-<br><br>Saya menggunakan **GPT-20B** untuk membantu Anda berbelanja.
-<br><br>**Cara menggunakan:**
-<br>1. 👆 **Klik produk** untuk mulai chat
-<br>2. 💬 **Tanya apapun** tentang produk
-<br>3. 🛒 **Beli langsung** lewat chat
-<br>4. 📱 **Checkout** via WhatsApp
-<br><br>Klik produk untuk mulai! 🎉`);
-      }
-    }, 1500);
+    // Auto greeting setelah modal dibuka
+    const modal = document.getElementById('chat-modal');
+    if (modal) {
+      modal.addEventListener('ionModalDidPresent', () => {
+        if (!currentProduct) {
+          setTimeout(() => {
+            const messages = document.getElementById('chat-messages');
+            if (messages && messages.children.length === 0) {
+              addMessage('ai', `Halo! 👋 Aku Maya, asisten virtual kamu di Plus62 Store! 😊
+
+Klik produk dulu ya buat mulai ngobrol, nanti aku bantu pilih masker yang cocok buat kamu!
+
+Ada yang bisa aku bantu? 🛍️💁‍♀️`);
+            }
+          }, 300);
+        }
+      });
+    }
   });
 
-  // WhatsApp integration
+  // WhatsApp integration yang lebih smooth
   window.WhatsAppOrder = function() {
-    alert('Fitur WhatsApp checkout akan terbuka setelah Anda konfirmasi.');
+    const items = simpleCart.items();
+    if (items.length === 0) {
+      alert('Keranjang masih kosong nih, yuk isi dulu! 😊');
+      return;
+    }
+    
+    let message = `Halo Admin Plus62 Store! 😊\nSaya mau order nih:\n\n`;
+    
+    items.forEach((item, index) => {
+      message += `${index + 1}. ${item.get('name')}\n`;
+      message += `   Warna: ${item.get('warna') || '-'}\n`;
+      message += `   Model: ${item.get('ukuran') || 'regular'}\n`;
+      message += `   Jumlah: ${item.get('quantity')} pcs\n`;
+      message += `   Harga: Rp ${formatPrice(item.get('price'))}\n\n`;
+    });
+    
+    message += `Total: Rp ${formatPrice(simpleCart.total())}\n\n`;
+    message += `*Mohon diproses ya!* 🙏`;
+    
+    const phone = '6281234567890'; // Ganti dengan nomor admin beneran
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
+  };
+
+  // Quick add to cart function (for testing)
+  window.quickAdd = function(productName, color, qty) {
+    const product = Array.from(document.querySelectorAll('.product-card'))
+      .find(card => card.querySelector('.product-title')?.textContent.includes(productName));
+    
+    if (product) {
+      const price = parsePrice(product.dataset.price || '15000');
+      simpleCart.add({
+        name: productName,
+        price: price,
+        quantity: qty || 1,
+        warna: color || 'hitam',
+        ukuran: 'regular',
+        berat: 100
+      });
+      
+      updateCartCount();
+      alert(`✅ ${qty || 1} ${productName} warna ${color} ditambahkan!`);
+    }
   };
 </script>
 </body>
