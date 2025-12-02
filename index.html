@@ -472,18 +472,35 @@ Apa yang bisa saya bantu? 😊
       }, 300);
     }
 
-    // FIXED: Add message to chat
-    function addMessage(sender, text) {
-      const messages = document.getElementById('chat-messages');
-      if (!messages) return;
+ // Versi extended dengan lebih banyak markdown support
+function addMessage(sender, text) {
+  const messages = document.getElementById('chat-messages');
+  if (!messages) return;
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${sender}-message`;
+  
+  // Parse markdown dengan styling lebih baik
+  let htmlText = text
+    // Bold dengan ** atau __
+    .replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>')
+    // Italic dengan * atau _
+    .replace(/(\*|_)(.*?)\1/g, '<em>$2</em>')
+    // Line breaks
+    .replace(/\n/g, '<br>')
+    // Code/teletype dengan `
+    .replace(/`(.*?)`/g, '<code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;font-family:monospace;">$1</code>')
+    // Bullet points dengan styling
+    .replace(/^•\s+/gm, '<span style="display:inline-block;width:20px;color:#3880ff;">•</span> ')
+    // Numbered lists
+    .replace(/^(\d+)\.\s+/gm, '<span style="display:inline-block;width:20px;color:#3880ff;">$1.</span> ');
+  
+  messageDiv.innerHTML = htmlText;
+  
+  messages.appendChild(messageDiv);
+  scrollToBottom();
+}
       
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `message ${sender}-message`;
-      messageDiv.innerHTML = text.replace(/\n/g, '<br>');
-      
-      messages.appendChild(messageDiv);
-      scrollToBottom();
-    }
 
     // Scroll to bottom function
     function scrollToBottom() {
