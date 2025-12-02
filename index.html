@@ -75,8 +75,8 @@
 
     /* Chat Modal Styles */
     .chat-container {
+      height: 400px;
       display: flex;
-      flex-grow: 1;
       flex-direction: column;
     }
 
@@ -166,7 +166,6 @@
     <ion-content>
       <div class="product-grid" id="productGrid"></div>
     </ion-content>
-<span id="footer">DaffaDev</span>
 
     <!-- AI Chat Modal -->
     <ion-modal trigger="open-chat" id="chat-modal">
@@ -245,6 +244,19 @@
   let chatHistory = [];
   const AI_API_URL = 'https://ai-plus62store.sendaljepit.workers.dev/api/chat';
 
+  // Helper: Parse harga "20.000" ke 20000
+  function parsePrice(priceStr) {
+    if (typeof priceStr === 'number') return priceStr;
+    if (!priceStr) return 0;
+    return parseInt(priceStr.toString().replace(/\./g, '')) || 0;
+  }
+
+  // Helper: Format harga untuk display
+  function formatPrice(price) {
+    if (typeof price === 'string') return price;
+    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
   // Load products
   async function loadProducts() {
     try {
@@ -265,10 +277,12 @@
           <img class="product-image" src="${item.image}" alt="${item.title}" loading="lazy" />
           <div class="product-title">${item.title}</div>
           <div class="product-price">
-            <span style="text-decoration: line-through; color: #999; margin-right: 8px;">
-              Rp ${item.price}
+            ${item.price ? `<span style="text-decoration: line-through; color: #999; margin-right: 8px;">
+              Rp ${formatPrice(item.price)}
+            </span>` : ''}
+            <span style="font-weight: bold; color: #e74c3c;">
+              Rp ${formatPrice(item.discount)}
             </span>
-            Rp ${item.discount}
           </div>
           <div class="product-stock" style="color: ${stockColor}">
             ${stockText}
@@ -296,25 +310,35 @@
     const title = document.getElementById('chat-title');
     const messages = document.getElementById('chat-messages');
     
-    title.textContent = `AI Assistant - ${product.title}`;
+    title.textContent = `🤖 AI Assistant - ${product.title}`;
     messages.innerHTML = '';
     
-    // Initial AI message
-    addMessage('ai', `👋 Halo! Saya AI Assistant untuk **${product.title}** 
+    // Initial AI message - beri konteks produk
+    const colors = product.styles?.map(s => s.name).join(', ') || 'berbagai pilihan';
+    const price = formatPrice(product.discount);
     
-**💰 Harga:** Rp ${product.discount} 
-**📦 Stok:** ${product.stok}
-**🎨 Warna:** ${product.styles?.map(s => s.name).join(', ') || 'Tersedia berbagai warna'}
-**🎀 Model tali:** Regular/Standard
+    addMessage('ai', `👋 **Halo! Saya AI Assistant GPT khusus untuk ${product.title}.** 
+    
+**📊 Detail Produk:**
+• 💰 **Harga:** Rp ${price}
+• 📦 **Stok:** ${product.stok}
+• 🎨 **Warna tersedia:** ${colors}
+• 🎀 **Model tali:** Regular, Panjang, Pendek
 
-_Saya bisa membantu Anda:_
-• Menjelaskan detail produk
-• Memandu pemilihan warna & model
-• Menambahkan ke keranjang belanja
-• Menjawab pertanyaan apapun!
+**💡 Cara berinteraksi dengan saya:**
+1. Tanya detail produk: "Berapa harganya?", "Apa warnanya?"
+2. Cek ketersediaan: "Stok masih ada?", "Warna merah ada?"
+3. Mulai belanja: "Saya mau beli warna hitam 2 pcs"
+4. Tanya apapun tentang produk ini!
 
-Apa yang bisa saya bantu hari ini?`);
+**Contoh pesan:**
+• "Berapa harga diskonnya?"
+• "Saya mau warna navy 3 buah"
+• "Model tali panjang ada?"
+• "Tambah ke keranjang 1 pcs warna merah"
 
+_Saya siap membantu Anda! Apa yang ingin Anda tanyakan atau pesan?_ 🛍️`);
+    
     modal.present();
   }
 
@@ -323,10 +347,7 @@ Apa yang bisa saya bantu hari ini?`);
     const messages = document.getElementById('chat-messages');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}-message`;
-    
-    // Format text with line breaks
     messageDiv.innerHTML = text.replace(/\n/g, '<br>');
-    
     messages.appendChild(messageDiv);
     messages.scrollTop = messages.scrollHeight;
   }
@@ -352,7 +373,7 @@ Apa yang bisa saya bantu hari ini?`);
     if (typing) typing.remove();
   }
 
-  // Send message to AI
+  // Send message to GPT AI
   async function sendMessage() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
@@ -367,10 +388,10 @@ Apa yang bisa saya bantu hari ini?`);
     showTyping();
     
     try {
-      // Prepare context data
+      // Prepare cart data
       const cartData = getCartData();
       
-      // Send to AI worker
+      // Call GPT AI
       const response = await fetch(AI_API_URL, {
         method: 'POST',
         headers: {
@@ -382,26 +403,29 @@ Apa yang bisa saya bantu hari ini?`);
           context: {
             cart: cartData,
             currentProduct: currentProduct,
-            userInfo: {}
+            userPreferences: {}
           }
         })
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const aiResponse = await response.json();
       hideTyping();
       
-      console.log('AI Response:', aiResponse);
-      
       // Add AI response
-      addMessage('ai', aiResponse.response || aiResponse);
+      if (aiResponse.response) {
+        addMessage('ai', aiResponse.response);
+      }
       
-      // Handle AI actions
+      // Handle actions
       if (aiResponse.action === 'addToCart' && aiResponse.data) {
-        addToCart(aiResponse.data);
+        handleAddToCart(aiResponse.data);
+      } else if (aiResponse.action === 'ask') {
+        // GPT minta informasi tambahan
+        addMessage('ai', `${aiResponse.response}\n\nSilakan jawab di chat ya!`);
       }
       
       // Save to history
@@ -415,65 +439,93 @@ Apa yang bisa saya bantu hari ini?`);
       
     } catch (error) {
       hideTyping();
-      console.error('AI Error:', error);
+      console.error('GPT AI Error:', error);
       
-      // Fallback response jika AI error
-      addMessage('ai', `Maaf, ada gangguan koneksi ke AI Assistant. 😔
-
-Untuk sementara, Anda bisa:
-1. **Tanya produk ini:**
-   - "Berapa harganya?"
-   - "Apa saja warnanya?"
-   - "Stok masih ada?"
-
-2. **Untuk membeli, ketik:**
-   - "Saya mau beli warna hitam 2 pcs"
-   - "Tambah ke keranjang warna merah 1 buah"
-
-Atau coba lagi nanti ya!`);
+      // Fallback to local AI
+      handleLocalAIResponse(message);
     }
   }
 
-  // Add item to cart
-  function addToCart(itemData) {
+  // Handle add to cart from GPT
+  function handleAddToCart(itemData) {
     try {
-      // Convert price string "20.000" to number 20000
-      function parsePrice(priceStr) {
-        if (typeof priceStr === 'number') return priceStr;
-        return parseInt(priceStr.toString().replace(/\./g, '')) || 0;
-      }
-      
-      const price = parsePrice(itemData.price || currentProduct.discount);
-      const quantity = itemData.quantity || 1;
-      const warna = itemData.warna || 'Belum dipilih';
-      const ukuran = itemData.ukuran || 'regular';
+      // Parse price if it's string
+      const price = parsePrice(itemData.price);
       
       simpleCart.add({
         name: itemData.name || currentProduct.title,
         price: price,
-        quantity: quantity,
-        warna: warna,
-        ukuran: ukuran,
+        quantity: itemData.quantity || 1,
+        warna: itemData.warna || 'Belum dipilih',
+        ukuran: itemData.ukuran || 'regular',
         link: itemData.link || currentProduct.url || '#',
         berat: itemData.berat || 100
       });
       
       updateCartCount();
       
-      // Show success message in chat
-      addMessage('ai', `✅ **Berhasil ditambahkan ke keranjang!**
+      // Show success in chat
+      addMessage('ai', `✅ **Berhasil ditambahkan ke keranjang!** 
       
-**Produk:** ${itemData.name || currentProduct.title}
-**Warna:** ${warna}
-**Model:** ${ukuran}
-**Jumlah:** ${quantity} pcs
-**Subtotal:** Rp ${(price * quantity).toLocaleString('id-ID')}
+📦 **Produk:** ${itemData.name || currentProduct.title}
+🎨 **Warna:** ${itemData.warna || 'Belum dipilih'}
+📏 **Model:** ${itemData.ukuran || 'regular'}
+🔢 **Jumlah:** ${itemData.quantity || 1} pcs
+💰 **Subtotal:** Rp ${formatPrice(price * (itemData.quantity || 1))}
 
-Keranjang Anda sekarang ada **${simpleCart.quantity()}** item.`);
+🛒 **Keranjang Anda sekarang:** ${simpleCart.quantity()} item
+💳 **Total sementara:** Rp ${formatPrice(simpleCart.total())}
+
+Ingin tambah produk lain atau lanjut ke checkout?`);
       
     } catch (error) {
       console.error('Error adding to cart:', error);
-      addMessage('ai', '❌ Gagal menambahkan ke keranjang. Silakan coba lagi.');
+      addMessage('ai', '❌ **Gagal menambahkan ke keranjang.** Silakan coba lagi atau hubungi admin.');
+    }
+  }
+
+  // Local AI fallback (if GPT fails)
+  function handleLocalAIResponse(message) {
+    const lowerMsg = message.toLowerCase();
+    
+    if (lowerMsg.includes('harga') || lowerMsg.includes('berapa')) {
+      addMessage('ai', `💰 **Harga ${currentProduct.title}:**
+• Harga asli: Rp ${formatPrice(currentProduct.price)}
+• **Harga diskon:** Rp ${formatPrice(currentProduct.discount)}
+• Anda hemat: Rp ${formatPrice(parsePrice(currentProduct.price) - parsePrice(currentProduct.discount))}!`);
+    }
+    else if (lowerMsg.includes('warna') || lowerMsg.includes('color')) {
+      const colors = currentProduct.styles?.map(s => `• ${s.name}`).join('<br>') || 'Tidak ada info warna';
+      addMessage('ai', `🎨 **Warna yang tersedia untuk ${currentProduct.title}:**
+<br>${colors}
+<br><br>Pilih warna favorit Anda!`);
+    }
+    else if (lowerMsg.includes('stok') || lowerMsg.includes('ada') || lowerMsg.includes('tersedia')) {
+      addMessage('ai', `📦 **Status stok ${currentProduct.title}:**
+<br>• **${currentProduct.stok}**
+<br>${currentProduct.stok === 'Stok Habis' ? '😔 Maaf, stok sedang habis. Cek produk lain ya!' : '✅ Siap dikirim! Pesan sekarang!'}`);
+    }
+    else if (lowerMsg.includes('beli') || lowerMsg.includes('pesan') || lowerMsg.includes('tambah') || lowerMsg.includes('cart')) {
+      addMessage('ai', `🛒 **Mau beli ${currentProduct.title}?**
+<br><br>**Langkah pemesanan:**
+<br>1. **Pilih warna** (contoh: "hitam", "navy", "merah")
+<br>2. **Tentukan jumlah** (contoh: "2 pcs", "3 buah")
+<br>3. **Pilih model tali** (regular/panjang/pendek)
+<br><br>**Contoh pesan lengkap:**
+<br>"Saya mau warna hitam 2 pcs model regular"
+<br>"Pesan warna merah 1 buah tali panjang"
+<br>"Beli navy 3 pcs"
+<br><br>Silakan tulis pesan Anda!`);
+    }
+    else {
+      addMessage('ai', `🤖 **AI Assistant untuk ${currentProduct.title}**
+<br><br>Saya bisa bantu Anda dengan:
+<br>• **💰 Harga** - Tanya harga dan diskon
+<br>• **🎨 Warna** - Lihat pilihan warna
+<br>• **📦 Stok** - Cek ketersediaan
+<br>• **🛒 Pemesanan** - Bantu beli produk
+<br>• **❓ Lainnya** - Pertanyaan apapun!
+<br><br>Coba tanya: "Berapa harganya?" atau "Saya mau beli..."`);
     }
   }
 
@@ -490,7 +542,6 @@ Keranjang Anda sekarang ada **${simpleCart.quantity()}** item.`);
         total: item.get('price') * item.get('quantity')
       }));
     } catch (error) {
-      console.error('Error getting cart data:', error);
       return [];
     }
   }
@@ -504,7 +555,7 @@ Keranjang Anda sekarang ada **${simpleCart.quantity()}** item.`);
         cartCount.textContent = count;
       }
     } catch (error) {
-      console.error('Error updating cart count:', error);
+      // Silent error
     }
   }
 
@@ -518,14 +569,27 @@ Keranjang Anda sekarang ada **${simpleCart.quantity()}** item.`);
       return;
     }
     
-    // Trigger WhatsApp order
-    window.WhatsAppOrder();
+    // Use existing WhatsApp order from formOrder.js
+    if (typeof WhatsApp === 'function') {
+      WhatsApp();
+    } else {
+      // Fallback WhatsApp
+      const total = simpleCart.total();
+      const items = simpleCart.items().map(item => 
+        `${item.get('name')} - ${item.get('quantity')} pcs (${item.get('warna')})`
+      ).join('\n');
+      
+      const message = `Halo, saya mau order:\n\n${items}\n\nTotal: Rp ${formatPrice(total)}`;
+      const phone = '6281234567890'; // Ganti dengan nomor admin
+      const encoded = encodeURIComponent(message);
+      window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
+    }
   }
 
   // Close chat
   function closeChat() {
     const modal = document.getElementById('chat-modal');
-    modal.dismiss();
+    if (modal) modal.dismiss();
     currentProduct = null;
     chatHistory = [];
   }
@@ -533,56 +597,47 @@ Keranjang Anda sekarang ada **${simpleCart.quantity()}** item.`);
   // Close cart
   function closeCart() {
     const modal = document.getElementById('cart-modal');
-    modal.dismiss();
+    if (modal) modal.dismiss();
   }
 
-  // Enter key support for chat
-  document.getElementById('chat-input').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      sendMessage();
+  // Enter key support
+  document.addEventListener('DOMContentLoaded', function() {
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+      chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          sendMessage();
+        }
+      });
     }
-  });
-
-  // Initialize
-  document.addEventListener('DOMContentLoaded', () => {
+    
+    // Initialize
     loadProducts();
     
-    // Update cart when items change
-    simpleCart.bind('update', updateCartCount);
+    // Update cart on changes
+    if (typeof simpleCart !== 'undefined') {
+      simpleCart.bind('update', updateCartCount);
+    }
     
     // Initial greeting
     setTimeout(() => {
       const messages = document.getElementById('chat-messages');
       if (messages && messages.children.length === 0) {
-        addMessage('ai', '👋 **Halo! Saya AI Shopping Assistant.**\n\nKlik produk untuk mulai chatting dengan saya! Saya bisa bantu Anda:\n• Memilih produk yang tepat\n• Menjelaskan detail produk\n• Menambahkan ke keranjang\n• Menjawab semua pertanyaan Anda!');
+        addMessage('ai', `🤖 **Selamat datang di AI Shopping Assistant!**
+<br><br>Saya menggunakan **GPT-20B** untuk membantu Anda berbelanja.
+<br><br>**Cara menggunakan:**
+<br>1. 👆 **Klik produk** untuk mulai chat
+<br>2. 💬 **Tanya apapun** tentang produk
+<br>3. 🛒 **Beli langsung** lewat chat
+<br>4. 📱 **Checkout** via WhatsApp
+<br><br>Klik produk untuk mulai! 🎉`);
       }
-    }, 1000);
+    }, 1500);
   });
 
-  // WhatsApp Order Integration (dari formOrder.js)
+  // WhatsApp integration
   window.WhatsAppOrder = function() {
-    // Cek apakah formOrder.js sudah di-load
-    if (typeof WhatsApp === 'function') {
-      WhatsApp();
-    } else {
-      // Fallback ke WhatsApp langsung
-      let message = 'Halo, saya mau order:\n\n';
-      const items = simpleCart.items();
-      
-      items.forEach((item, index) => {
-        message += `${index + 1}. ${item.get('name')}\n`;
-        message += `   Warna: ${item.get('warna') || '-'}\n`;
-        message += `   Model: ${item.get('ukuran') || '-'}\n`;
-        message += `   Jumlah: ${item.get('quantity')} pcs\n`;
-        message += `   Harga: Rp ${item.get('price')}\n\n`;
-      });
-      
-      message += `Total: Rp ${simpleCart.total()}`;
-      
-      const phone = '6281234567890'; // Ganti dengan nomor admin
-      const encoded = encodeURIComponent(message);
-      window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
-    }
+    alert('Fitur WhatsApp checkout akan terbuka setelah Anda konfirmasi.');
   };
 </script>
 </body>
