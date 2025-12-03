@@ -321,13 +321,17 @@
           <ion-icon name="close" slot="icon-only"></ion-icon>
         </ion-button>
       </ion-buttons>
-    </ion-toolbar> </ion-header>
+    </ion-toolbar>
+  </ion-header>
   <ion-content class="chat-container">
     <div class="chat-messages" id="chat-messages">
       </div>
 
     <div class="chat-input-container"></div>
+  </ion-content>
+<ion-footer>
       <div class="chat-input-wrapper">
+<ion-toolbar>
         <ion-input 
           id="chat-input" 
           placeholder="Ketik pesan..."
@@ -339,8 +343,9 @@
           <ion-icon name="send" slot="icon-only"></ion-icon>
         </ion-button>
 </ion-buttons>
+</ion-toolbar>
       </div>
-  </ion-content>
+</ion-footer>
 </ion-modal>
 
     <!-- Cart Modal - FIXED STRUCTURE -->
