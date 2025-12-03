@@ -314,29 +314,33 @@
   </ion-toolbar>
 </ion-footer>
 
-    <ion-modal id="chat-modal">
-      <ion-header>
-        </ion-header>
-      <ion-content class="chat-container">
-          <div class="chat-messages" id="chat-messages">
-            </div>
+<ion-modal id="chat-modal">
+  <ion-header>
+    <ion-toolbar> <ion-title id="chat-title"> Shopping Assistant</ion-title> <ion-buttons slot="end">
+        <ion-button onclick="closeChatModal()">
+          <ion-icon name="close" slot="icon-only"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    </ion-toolbar> </ion-header>
+  <ion-content class="chat-container">
+    <div class="chat-messages" id="chat-messages">
+      </div>
 
-          <div class="chat-input-container">
-            <div class="chat-input-wrapper">
-              <ion-input 
-                id="chat-input" 
-                placeholder="Ketik pesan..."
-                enterkeyhint="send"
-                clear-input="true"
-              ></ion-input>
-              <ion-button id="send-button" onclick="sendMessage()" fill="solid">
-                <ion-icon name="send" slot="icon-only"></ion-icon>
-              </ion-button>
-            </div>
-          </div>
-      </ion-content>
-    </ion-modal>
-
+    <div class="chat-input-container">
+      <div class="chat-input-wrapper">
+        <ion-input 
+          id="chat-input" 
+          placeholder="Ketik pesan..."
+          enterkeyhint="send"
+          clear-input="true"
+        ></ion-input>
+        <ion-button id="send-button" onclick="sendMessage()" fill="solid">
+          <ion-icon name="send" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+    </div>
+  </ion-content>
+</ion-modal>
 
     <!-- Cart Modal - FIXED STRUCTURE -->
     <ion-modal id="cart-modal">
