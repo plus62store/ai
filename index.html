@@ -451,17 +451,13 @@
 
       if (!modal || !title || !messages) return;
 
-      title.textContent = `🤖 AI Assistant - ${product.title}`;
+      title.textContent = `🤖 AI Assist - ${product.title}`;
       messages.innerHTML = '';
 
       // Initial AI message
       const colors = product.styles?.map(s => s.name).join(', ') || 'berbagai pilihan';
 
-      addMessage('ai', `👋 **Hai! Saya AI Assistant untuk ${product.title}** 
-      
-💰 **Harga:** Rp ${formatPrice(product.discount)}
-🎨 **Warna:** ${colors}
-📦 **Stok:** ${product.stok}
+      addMessage('ai', `👋 **Hai! Saya Maya AI Assistant untuk ${product.title}**
 
 Apa yang bisa saya bantu? 😊
 
