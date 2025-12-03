@@ -9,7 +9,7 @@
   <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core@8/dist/ionic/ionic.esm.js"></script>
   <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core@8/dist/ionic/ionic.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core@8/css/ionic.bundle.css" />
-  
+
   <!-- Include SimpleCart -->
   <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
   <script src="simpleCart.js"></script>
@@ -131,6 +131,7 @@
     }
 
     .user-message {
+      width: fit-content;
       margin-left: auto;
       background: #3880ff;
       color: white;
@@ -170,7 +171,7 @@
       flex: 1;
       --padding-start: 16px;
       --padding-end: 16px;
-      --background: #f5f5f5;
+      --background: transparent;
       --border-radius: 24px;
       height: 44px;
     }
@@ -213,7 +214,6 @@
     /* FIX ION-MODAL STYLES */
     ion-modal {
       --height: auto;
-      --max-height: 90vh;
       --border-radius: 16px;
       --box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     }
@@ -251,23 +251,23 @@
       .chat-container {
         height: calc(100vh - 56px - env(safe-area-inset-bottom)) !important;
       }
-      
+
       ion-modal {
         --height: 100%;
         --max-height: 100%;
         --border-radius: 0;
         --box-shadow: none;
       }
-      
+
       ion-modal::part(content) {
         border-radius: 0;
       }
-      
+
       .product-grid {
         padding: 12px;
         gap: 12px;
       }
-      
+
       .product-card {
         border-radius: 8px;
       }
@@ -278,7 +278,7 @@
       .chat-input-container {
         padding-bottom: max(12px, env(safe-area-inset-bottom));
       }
-      
+
       .chat-messages {
         padding-top: max(16px, env(safe-area-inset-top));
       }
@@ -303,7 +303,7 @@
       <div class="product-grid" id="productGrid"></div>
     </ion-content>
 <ion-footer>
-  <ion-toolbar>
+  <ion-toolbar class="ion-padding">
     <ion-label slot="end">
       <span id="footer">DaffaDev</span>
     </ion-label>
@@ -313,7 +313,7 @@
     <ion-modal id="chat-modal">
       <ion-header>
         <ion-toolbar>
-          <ion-title id="chat-title">AI Shopping Assistant</ion-title>
+          <ion-title id="chat-title"> Shopping Assistant</ion-title>
           <ion-buttons slot="end">
             <ion-button onclick="closeChatModal()">
               <ion-icon name="close" slot="icon-only"></ion-icon>
@@ -321,12 +321,11 @@
           </ion-buttons>
         </ion-toolbar>
       </ion-header>
-      <ion-content>
-        <div class="chat-container">
+      <ion-content class="chat-container">
           <div class="chat-messages" id="chat-messages">
             <!-- Messages will be inserted here -->
           </div>
-          
+
           <!-- FIXED INPUT CONTAINER -->
           <div class="chat-input-container">
             <div class="chat-input-wrapper">
@@ -341,7 +340,6 @@
               </ion-button>
             </div>
           </div>
-        </div>
       </ion-content>
     </ion-modal>
 
@@ -357,14 +355,14 @@
       </ion-header>
       <ion-content class="cart-content">
         <div id="simpleCart_items" class="simpleCart_items"></div>
-        
+
         <!-- Empty cart state -->
         <div id="empty-cart" class="empty-cart-state" style="display: none;">
           <ion-icon name="cart-outline"></ion-icon>
           <h3>Keranjang Kosong</h3>
           <p>Yuk tambahkan produk dulu!</p>
         </div>
-        
+
         <ion-grid style="padding: 20px;">
           <ion-row>
             <ion-col>
@@ -379,7 +377,7 @@
     </ion-modal>
   </ion-app>
 
-  <script>
+<script>
     // Konfigurasi SimpleCart
     simpleCart({
       cartColumns: [
@@ -397,7 +395,7 @@
 
     // AI Chat State
     let currentProduct = null;
-    let chatHistory = [];
+    let chatSessionId = Date.now().toString(); // TAMBAHKAN session ID
     const AI_API_URL = 'https://ai-plus62store.sendaljepit.workers.dev/api/chat';
 
     // Helper functions
@@ -424,7 +422,7 @@
         data.product.forEach(item => {
           const card = document.createElement('div');
           card.className = 'product-card';
-          
+
           const stockColor = item.stok === 'Stok Habis' ? '#e74c3c' : '#27ae60';
           const stockText = item.stok === 'Stok Habis' ? 'Stok Habis' : 'Tersedia';
 
@@ -459,23 +457,23 @@
       }
     }
 
-    // Open chat for specific product
+    // Open chat for specific product - TAMBAHKAN RESET SESSION
     function openProductChat(product) {
       currentProduct = product;
-      chatHistory = [];
-      
+      chatSessionId = Date.now().toString(); // RESET SESSION SETIAP KALI CHAT BARU
+
       const modal = document.getElementById('chat-modal');
       const title = document.getElementById('chat-title');
       const messages = document.getElementById('chat-messages');
-      
+
       if (!modal || !title || !messages) return;
-      
+
       title.textContent = `🤖 AI Assistant - ${product.title}`;
       messages.innerHTML = '';
-      
+
       // Initial AI message
       const colors = product.styles?.map(s => s.name).join(', ') || 'berbagai pilihan';
-      
+
       addMessage('ai', `👋 **Hai! Saya AI Assistant untuk ${product.title}** 
       
 💰 **Harga:** Rp ${formatPrice(product.discount)}
@@ -488,10 +486,10 @@ Apa yang bisa saya bantu? 😊
 • "Warnanya ada apa aja?"
 • "Aku mau beli warna hitam 2 pcs"
 • "Ceritain detail produknya"`);
-      
+
       // Open modal
       modal.present();
-      
+
       // Auto focus dan scroll setelah modal terbuka
       setTimeout(() => {
         const input = document.getElementById('chat-input');
@@ -500,35 +498,32 @@ Apa yang bisa saya bantu? 😊
       }, 300);
     }
 
- // Versi extended dengan lebih banyak markdown support
-function addMessage(sender, text) {
-  const messages = document.getElementById('chat-messages');
-  if (!messages) return;
-  
-  const messageDiv = document.createElement('div');
-  messageDiv.className = `message ${sender}-message`;
-  
-  // Parse markdown dengan styling lebih baik
-  let htmlText = text
-    // Bold dengan ** atau __
-    .replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>')
-    // Italic dengan * atau _
-    .replace(/(\*|_)(.*?)\1/g, '<em>$2</em>')
-    // Line breaks
-    .replace(/\n/g, '<br>')
-    // Code/teletype dengan `
-    .replace(/`(.*?)`/g, '<code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;font-family:monospace;">$1</code>')
-    // Bullet points dengan styling
-    .replace(/^•\s+/gm, '<span style="display:inline-block;width:20px;color:#3880ff;">•</span> ')
-    // Numbered lists
-    .replace(/^(\d+)\.\s+/gm, '<span style="display:inline-block;width:20px;color:#3880ff;">$1.</span> ');
-  
-  messageDiv.innerHTML = htmlText;
-  
-  messages.appendChild(messageDiv);
-  scrollToBottom();
-}
-      
+    // Versi extended dengan lebih banyak markdown support
+    function addMessage(sender, text) {
+      const messages = document.getElementById('chat-messages');
+      if (!messages) return;
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${sender}-message`;
+
+      // Parse markdown dengan styling lebih baik
+      let htmlText = text
+        // Bold dengan ** atau __
+        .replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>')
+        // Italic dengan * atau _
+        .replace(/(\*|_)(.*?)\1/g, '<em>$2</em>')
+        // Line breaks
+        .replace(/\n/g, '<br>')
+        // Code/teletype dengan `
+        .replace(/`(.*?)`/g, '<code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;font-family:monospace;">$1</code>')
+        // Bullet points dengan styling
+        .replace(/•/g, '<span style="display:inline-block;width:20px;color:#3880ff;">•</span>');
+
+      messageDiv.innerHTML = htmlText;
+
+      messages.appendChild(messageDiv);
+      scrollToBottom();
+    }
 
     // Scroll to bottom function
     function scrollToBottom() {
@@ -544,7 +539,7 @@ function addMessage(sender, text) {
     function showTyping() {
       const messages = document.getElementById('chat-messages');
       if (!messages) return;
-      
+
       const typingDiv = document.createElement('div');
       typingDiv.className = 'typing-indicator';
       typingDiv.id = 'typing-indicator';
@@ -563,70 +558,69 @@ function addMessage(sender, text) {
       if (typing) typing.remove();
     }
 
-    // Send message to AI
+    // PERBAIKI: Send message to AI dengan session ID
     async function sendMessage() {
       const input = document.getElementById('chat-input');
       if (!input) return;
-      
+
       const message = input.value.trim();
       if (!message) return;
-      
+
       // Clear input
       input.value = '';
-      
+
       // Reset input height
       input.style.height = 'auto';
-      
+
       // Add user message
       addMessage('user', message);
-      
+
       // Show typing indicator
       showTyping();
-      
+
       try {
-        // Prepare cart data
-        const cartData = getCartData();
-        
-        // Call AI
+        // PERBAIKAN: Kirim sessionId ke API
         const response = await fetch(AI_API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: message,
             productId: currentProduct?.id,
-            context: { cart: cartData }
+            sessionId: chatSessionId  // KIRIM SESSION ID
           })
         });
-        
+
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const aiResponse = await response.json();
+
+        const aiData = await response.json();
         hideTyping();
-        
+
+        // Update session ID dari response
+        if (aiData.sessionId) {
+          chatSessionId = aiData.sessionId;
+        }
+
         // Add AI response
-        if (aiResponse.response) {
-          addMessage('ai', aiResponse.response);
+        if (aiData.response) {
+          addMessage('ai', aiData.response);
         }
-        
-        // Handle actions
-        if (aiResponse.action?.type === 'addToCart' && aiResponse.action.data) {
-          handleAddToCart(aiResponse.action.data);
+
+        // Handle actions - HANYA JIKA ADA ACTION ADD TO CART
+        if (aiData.action?.type === 'addToCart' && aiData.action.data) {
+          handleAddToCart(aiData.action.data);
         }
-        
-        // Save to history
-        chatHistory.push({ user: message, ai: aiResponse.response });
-        
+
       } catch (error) {
         hideTyping();
         console.error('Chat error:', error);
-        
+
         // Fallback response
         const fallback = [
           "Maaf kak, lagi ada gangguan nih 😅 Coba lagi ya atau langsung pesan aja!",
           "Wah, koneksi lagi nggak stabil nih. Tapi produk ${currentProduct?.title} masih ready kok!",
           "Oops, error dikit. Tapi Maya masih siap bantu kamu pilih masker yang cocok! 😊"
         ];
-        
+
         const randomMsg = fallback[Math.floor(Math.random() * fallback.length)];
         addMessage('ai', randomMsg.replace('${currentProduct?.title}', currentProduct?.title || 'ini'));
       }
@@ -640,7 +634,7 @@ function addMessage(sender, text) {
         const warna = itemData.warna || 'pilihan';
         const ukuran = itemData.ukuran || 'regular';
         const productName = itemData.name || currentProduct?.title;
-        
+
         // Add to cart
         simpleCart.add({
           name: productName,
@@ -651,13 +645,12 @@ function addMessage(sender, text) {
           link: currentProduct?.url || '#',
           berat: 100
         });
-        
+
         updateCartCount();
         updateCartModal();
-        
-        // Success message
-        addMessage('ai', `✅ **Berhasil!** ${quantity}x ${productName} (${warna}) ditambahkan ke keranjang! 🛒`);
-        
+
+        // Success message - Moved to AI response, jadi tidak perlu pesan tambahan
+
       } catch (error) {
         console.error('Add to cart error:', error);
         addMessage('ai', '😅 Ups, gagal nambahin ke keranjang. Coba lagi ya!');
@@ -699,7 +692,7 @@ function addMessage(sender, text) {
       const items = simpleCart.items();
       const emptyCart = document.getElementById('empty-cart');
       const checkoutBtn = document.getElementById('checkout-btn');
-      
+
       if (items.length === 0) {
         if (emptyCart) emptyCart.style.display = 'block';
         if (checkoutBtn) checkoutBtn.style.display = 'none';
@@ -709,13 +702,13 @@ function addMessage(sender, text) {
       }
     }
 
-    // FIXED: Close chat modal
+    // PERBAIKAN: Close chat modal dengan reset session
     function closeChatModal() {
       const modal = document.getElementById('chat-modal');
       if (modal) {
         modal.dismiss();
         currentProduct = null;
-        chatHistory = [];
+        chatSessionId = Date.now().toString(); // RESET SESSION
       }
     }
 
@@ -729,12 +722,12 @@ function addMessage(sender, text) {
     function checkout() {
       const cartModal = document.getElementById('cart-modal');
       if (cartModal) cartModal.dismiss();
-      
+
       if (simpleCart.quantity() === 0) {
         alert('Keranjang masih kosong nih!');
         return;
       }
-      
+
       // WhatsApp order
       window.WhatsAppOrder();
     }
@@ -746,9 +739,9 @@ function addMessage(sender, text) {
         alert('Keranjang kosong!');
         return;
       }
-      
+
       let message = `Halo Admin Plus62 Store! 😊\n\nSaya mau order:\n\n`;
-      
+
       items.forEach((item, index) => {
         message += `${index + 1}. ${item.get('name')}\n`;
         message += `   Warna: ${item.get('warna') || '-'}\n`;
@@ -756,10 +749,10 @@ function addMessage(sender, text) {
         message += `   Jumlah: ${item.get('quantity')} pcs\n`;
         message += `   Harga: Rp ${formatPrice(item.get('price'))}\n\n`;
       });
-      
+
       message += `Total: Rp ${formatPrice(simpleCart.total())}\n\n`;
       message += `Mohon diproses ya! 🙏`;
-      
+
       const phone = '6281234567890';
       const encoded = encodeURIComponent(message);
       window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
@@ -768,10 +761,10 @@ function addMessage(sender, text) {
     // Initialize with proper event listeners
     document.addEventListener('DOMContentLoaded', function() {
       console.log('🚀 Initializing Plus62 Store...');
-      
+
       // Load products
       setTimeout(loadProducts, 500);
-      
+
       // Cart updates
       if (typeof simpleCart !== 'undefined') {
         simpleCart.bind('update', function() {
@@ -779,11 +772,11 @@ function addMessage(sender, text) {
           updateCartModal();
         });
       }
-      
+
       // Setup chat input
       const chatInput = document.getElementById('chat-input');
       const sendBtn = document.getElementById('send-button');
-      
+
       if (chatInput) {
         // Enter key to send
         chatInput.addEventListener('keypress', function(e) {
@@ -792,18 +785,18 @@ function addMessage(sender, text) {
             sendMessage();
           }
         });
-        
+
         // Auto-resize textarea
         chatInput.addEventListener('input', function() {
           this.style.height = 'auto';
           this.style.height = (this.scrollHeight) + 'px';
         });
       }
-      
+
       if (sendBtn) {
         sendBtn.addEventListener('click', sendMessage);
       }
-      
+
       // Setup cart button
       const cartBtn = document.getElementById('cart-button');
       if (cartBtn) {
@@ -815,7 +808,7 @@ function addMessage(sender, text) {
           }
         });
       }
-      
+
       // Initial chat greeting
       setTimeout(() => {
         const messages = document.getElementById('chat-messages');
@@ -828,11 +821,11 @@ function addMessage(sender, text) {
     // Handle keyboard show/hide on mobile
     if ('visualViewport' in window) {
       const viewport = window.visualViewport;
-      
+
       viewport.addEventListener('resize', () => {
         scrollToBottom();
       });
-      
+
       viewport.addEventListener('scroll', () => {
         scrollToBottom();
       });
@@ -842,7 +835,7 @@ function addMessage(sender, text) {
     document.addEventListener('backbutton', function(e) {
       const chatModal = document.getElementById('chat-modal');
       const cartModal = document.getElementById('cart-modal');
-      
+
       if (chatModal && chatModal.isConnected && chatModal.style.display !== 'none') {
         closeChatModal();
         e.preventDefault();
